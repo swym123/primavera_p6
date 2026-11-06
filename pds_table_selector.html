@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P6 PDS Query Body Builder</title>
+<style>
+  :root { color-scheme: light; --bg:#f4f6f8; --panel:#fff; --ink:#14212b; --muted:#62717f; --line:#dce3e9; --accent:#136b58; --accent2:#e9f5f1; --danger:#a52b2b; --shadow:0 12px 34px rgba(20,33,43,.07); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:24px clamp(18px,4vw,48px) 20px; background:#102d2a; color:#fff; }
+  .header-wrap { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; }
+  .header-left { max-width:850px; }
+  .eyebrow { color:#9dd6c5; text-transform:uppercase; letter-spacing:.12em; font-size:11px; font-weight:700; }
+  h1 { margin:5px 0 5px; font-size:clamp(20px,2.8vw,30px); line-height:1.2; letter-spacing:-.035em; }
+  header p { margin:0; color:#d3e3df; font-size:13px; line-height:1.5; }
+  .user-box { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:10px 14px; min-width:210px; }
+  .user-status-pill { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:650; color:#fff; }
+  .status-dot { width:9px; height:9px; border-radius:50%; background:#eab308; display:inline-block; flex-shrink:0; }
+  .status-dot.online { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,0.6); }
+  .status-dot.offline { background:#ef4444; }
+  .header-btn { background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.24); padding:5px 11px; font-size:11px; border-radius:6px; cursor:pointer; font-weight:600; white-space:nowrap; }
+  .header-btn:hover { background:rgba(255,255,255,0.25); border-color:rgba(255,255,255,0.38); }
+  
+  main { max-width:1420px; margin:22px auto; padding:0 18px 36px; }
+  .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .status { color:var(--muted); font-size:12px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; background:var(--accent2); color:var(--accent); border-radius:999px; padding:5px 10px; font-size:11px; font-weight:700; }
+  .layout { display:grid; grid-template-columns:minmax(260px, .85fr) minmax(360px, 1.15fr); gap:16px; align-items:start; }
+  .panel { border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); overflow:hidden; min-width:0; }
+  .panel-head { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .panel-head h2 { margin:0; font-size:15px; }
+  .panel-body { padding:16px 18px; }
+  input[type=search], input[type=text], input[type=password], select { width:100%; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); padding:10px 11px; font:inherit; outline:none; }
+  input:focus, select:focus { border-color:#5b9b8d; box-shadow:0 0 0 3px rgba(19,107,88,.1); }
+  .table-tools { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:12px; }
+  button { border:1px solid var(--line); color:var(--ink); background:#fff; border-radius:9px; padding:9px 12px; font:inherit; cursor:pointer; font-weight:650; white-space:nowrap; }
+  button:hover { border-color:#8ba99f; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.ghost { background:transparent; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .table-list { max-height:62vh; min-height:220px; overflow:auto; border:1px solid var(--line); border-radius:10px; }
+  .table-row { padding:10px 11px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1px solid #edf0f3; cursor:pointer; }
+  .table-row:last-child { border-bottom:0; }
+  .table-row:hover { background:#f8fbfa; }
+  .table-row.active { background:var(--accent2); box-shadow:inset 3px 0 var(--accent); }
+  .table-name { font-weight:750; overflow-wrap:anywhere; }
+  .table-meta { display:flex; gap:6px; flex-wrap:wrap; color:var(--muted); font-size:11px; margin-top:2px; }
+  .blacklist { color:var(--danger); font-size:10px; font-weight:750; border:1px solid #edc5c5; border-radius:5px; padding:1px 5px; }
+  .kind { border:1px solid var(--line); border-radius:5px; padding:1px 5px; color:var(--muted); font-size:10px; }
+  .column-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .column-top .search-wrap { flex:1; min-width:140px; }
+  .select-actions { display:flex; gap:7px; flex-wrap:wrap; margin:10px 0; }
+  .column-list { max-height:43vh; min-height:160px; overflow:auto; border:1px solid var(--line); border-radius:10px; }
+  .column-row { display:grid; grid-template-columns:20px minmax(120px,1fr) minmax(90px,.7fr); gap:9px; padding:8px 10px; align-items:center; border-bottom:1px solid #edf0f3; }
+  .column-row:last-child { border-bottom:0; }
+  .column-row:hover { background:#f9fbfb; }
+  input[type=checkbox] { accent-color:var(--accent); width:16px; height:16px; }
+  .col-name { font-weight:650; overflow-wrap:anywhere; }
+  .col-info { color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+  .column-labels { display:grid; grid-template-columns:20px minmax(120px,1fr) minmax(90px,.7fr); gap:9px; padding:5px 10px; color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:.08em; }
+  .section-title { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:18px 0 9px; }
+  .section-title strong { font-size:13px; }
+  .count { font-size:11px; color:var(--muted); }
+  .chosen-list { display:flex; flex-direction:column; gap:8px; }
+  .chosen-card { border:1px solid var(--line); border-radius:9px; padding:10px; }
+  .chosen-card-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .chosen-card-head strong { overflow-wrap:anywhere; }
+  .chosen-card p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+  .code-wrap { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#101d28; }
+  .code-wrap pre { margin:0; padding:15px; overflow:auto; max-height:45vh; color:#e1f4ea; font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }
+  .output-actions { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:13px; }
+  .field label { display:block; color:var(--muted); font-size:11px; font-weight:700; margin-bottom:5px; }
+  .empty { padding:25px 12px; text-align:center; color:var(--muted); }
+  .error { margin:10px 0; padding:10px 12px; border-radius:9px; background:#fff0f0; border:1px solid #e8bebe; color:#8d2424; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .note { font-size:11px; color:var(--muted); margin-top:10px; }
+  .spinner { display:inline-block; width:12px; height:12px; border:2px solid #ccd8d4; border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; margin-right:5px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Login Modal */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(12,28,26,0.68); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:9999; padding:16px; }
+  .modal-card { background:#fff; border-radius:14px; width:100%; max-width:420px; box-shadow:0 24px 50px rgba(0,0,0,0.28); border:1px solid var(--line); overflow:hidden; animation:popIn .18s ease-out; }
+  @keyframes popIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+  .modal-head { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .modal-close-btn { background:none; border:none; font-size:22px; line-height:1; color:var(--muted); cursor:pointer; padding:2px 6px; }
+  .modal-close-btn:hover { color:var(--ink); }
+  .modal-body { padding:20px; }
+  .modal-notice { padding:9px 12px; border-radius:8px; font-size:12px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; margin-bottom:14px; }
+  .modal-field { margin-bottom:12px; }
+  .modal-field label { display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:5px; }
+
+  @media (max-width:850px) { .layout { grid-template-columns:1fr; } .table-list { max-height:38vh; } .column-list { max-height:42vh; } .header-wrap { flex-direction:column; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-wrap">
+    <div class="header-left">
+      <div class="eyebrow">Primavera P6 · Data Service</div>
+      <h1>Query Body Builder</h1>
+      <p>Browse the PDS table catalogue, choose columns with checkboxes, and generate a ready-to-copy <code>runquery</code> JSON body. Enter your credentials to access the live P6 Data Service.</p>
+    </div>
+    <div class="user-box" id="userBox">
+      <div class="user-status-pill">
+        <span class="status-dot" id="authDot"></span>
+        <span id="userStatusText">Checking access…</span>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <button id="openLoginBtn" class="header-btn" title="Change or enter credentials">Sign In</button>
+        <button id="logoutBtn" class="header-btn" style="display:none;" title="Clear credentials">Sign Out</button>
+      </div>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="toolbar">
+    <div class="status" id="globalStatus"><span class="spinner"></span> Connecting to service…</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label for="configCodeSelect" style="font-size:12px;font-weight:700;color:var(--muted)">CONFIG_CODE:</label>
+      <select id="configCodeSelect" style="width:auto;padding:5px 12px;font-size:12px;font-weight:700;border-radius:999px;background:var(--accent2);color:var(--accent);border:1px solid #b2d7cd;cursor:pointer">
+        <option value="ds_p6adminuser" selected>ds_p6adminuser (Admin Tables)</option>
+        <option value="ds_p6reportuser">ds_p6reportuser (Reporting Views)</option>
+      </select>
+    </div>
+  </div>
+  <div class="layout">
+    <section class="panel">
+      <div class="panel-head"><h2>1. Choose a table <span id="activeRoleTag" class="pill" style="font-size:11px;margin-left:6px">ds_p6adminuser</span></h2><span class="count" id="tableCount">— tables</span></div>
+      <div class="panel-body">
+        <div class="table-tools"><input id="tableSearch" type="search" placeholder="Search table names…"><button id="refreshTables" title="Reload table list from cache">Refresh</button></div>
+        <div class="table-list" id="tableList"><div class="empty"><span class="spinner"></span> Loading table metadata…</div></div>
+        <div class="note">Blacklisted objects are shown for reference but cannot be selected. Column metadata is fetched on-demand and cached locally.</div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>2. Select columns</h2><span class="count" id="columnCount">No table selected</span></div>
+      <div class="panel-body">
+        <div id="columnArea"><div class="empty">Choose a table on the left to load its columns.</div></div>
+        
+        <!-- View Definition Block (Strictly for Reporting Schema only) -->
+        <div id="viewDefBlock" class="view-def-container" style="display:none; margin-top:16px; border-top:1px solid var(--line); padding-top:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong style="font-size:13px; color:var(--ink);">View SQL Definition</strong>
+              <span class="pill" id="viewDefPill" style="font-size:10px; background:#e0f2fe; color:#0369a1;">PXRPTUSER VIEW</span>
+              <span class="count" id="viewDefStats"></span>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button id="copyViewDefBtn" style="padding:4px 9px; font-size:11px;" title="Copy SQL definition to clipboard">Copy SQL</button>
+              <button id="toggleViewDefBtn" style="padding:4px 9px; font-size:11px;" title="Toggle code height">Expand</button>
+            </div>
+          </div>
+          <div class="code-wrap" id="viewDefWrap" style="background:#0c1923; border:1px solid #1c2e3d; border-radius:8px;">
+            <pre id="viewDefCode" style="margin:0; padding:12px 14px; font-size:11px; line-height:1.55; color:#99f6e4; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; max-height:260px; overflow:auto; white-space:pre-wrap; word-break:break-word;"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <section class="panel" style="margin-top:16px">
+    <div class="panel-head"><h2>3. Selected tables and generated body</h2><span class="count" id="selectedCount">0 tables selected</span></div>
+    <div class="panel-body">
+      <div class="chosen-list" id="chosenList"><div class="empty">No tables added yet. Select a table's columns and click “Add table to body”.</div></div>
+      <div class="section-title"><strong>Request options</strong><span class="count">Optional PDS runquery fields</span></div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="configCodeOpt">CONFIG_CODE</label>
+          <select id="configCodeOpt">
+            <option value="ds_p6adminuser" selected>ds_p6adminuser</option>
+            <option value="ds_p6reportuser">ds_p6reportuser</option>
+          </select>
+        </div>
+        <div class="field"><label for="queryName">Query name</label><input id="queryName" type="text" value="P6_Metadata_Query" maxlength="100"></div>
+      </div>
+      <div class="field-grid">
+        <div class="field"><label for="pageSize">Page size</label><input id="pageSize" type="text" value="1000" inputmode="numeric"></div>
+        <div class="field"><label for="mode">Execution mode</label><select id="mode"><option value="SYNC" selected>SYNC</option><option value="ASYNC">ASYNC</option></select></div>
+      </div>
+      <div class="field-grid">
+        <div class="field"><label for="sinceDate">sinceDate (optional)</label><input id="sinceDate" type="text" placeholder="Leave blank for no filter"></div>
+      </div>
+      <div class="output-actions">
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="generateBtn">Generate JSON body</button><button id="copyBtn" disabled>Copy JSON</button><button id="downloadBtn" disabled>Download .json</button></div>
+        <button class="ghost" id="clearBtn">Clear selections</button>
+      </div>
+      <div id="outputError"></div>
+      <div class="code-wrap"><pre id="output">{
+  "tables": []
+}</pre></div>
+      <div class="note">Use this body with <code>POST /pds/rest-service/dataservice/runquery?configCode=<span id="postmanConfigCode">ds_p6adminuser</span></code> in Postman. Actual column data and table access depend on your PDS credentials.</div>
+    </div>
+  </section>
+</main>
+
+<!-- Login / Authentication Modal -->
+<div class="modal-backdrop" id="loginModal" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div style="display:flex; align-items:center; gap:9px;">
+        <div style="background:#e9f5f1; color:#136b58; border-radius:7px; padding:4px 8px; font-weight:800; font-size:13px; letter-spacing:-.02em;">P6</div>
+        <div>
+          <h3 style="margin:0; font-size:15px; color:#14212b;">Primavera P6 Sign In</h3>
+          <p style="margin:2px 0 0; font-size:11px; color:#62717f;">Enter credentials to authenticate with PDS</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="closeModalBtn" title="Close" style="display:none;">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalNotice" class="modal-notice" style="display:none;"></div>
+      <form id="loginForm" onsubmit="return false;">
+        <div class="modal-field">
+          <label for="modalUsername">PDS Username</label>
+          <input id="modalUsername" type="text" placeholder="e.g. p6admin" autocomplete="username" required>
+        </div>
+        <div class="modal-field">
+          <label for="modalPassword">PDS Password</label>
+          <div style="position:relative; display:flex; align-items:center;">
+            <input id="modalPassword" type="password" placeholder="Enter password" autocomplete="current-password" required style="padding-right:40px;">
+            <button type="button" id="togglePasswordBtn" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; padding:4px 8px; color:#62717f; font-size:13px; cursor:pointer;" title="Show or hide password">👁️</button>
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="rememberCreds" checked>
+          <label for="rememberCreds" style="font-size:12px; color:#62717f; cursor:pointer; user-select:none;">Remember credentials in this browser</label>
+        </div>
+        <div id="modalError" class="error" style="display:none;"></div>
+        <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" id="cancelModalBtn" class="ghost" style="display:none;">Cancel</button>
+          <button type="submit" id="submitLoginBtn" class="primary"><span id="loginBtnSpinner" class="spinner" style="display:none;"></span>Connect</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const state = {
+    tables: [],
+    activeTable: null,
+    columns: [],
+    selectedColumns: new Set(),
+    chosenTables: new Map(),
+    generated: null,
+    configCode: 'ds_p6adminuser',
+    activeViewDefinition: null,
+    isViewDefExpanded: false,
+    auth: {
+      username: '',
+      password: '',
+      isAuthenticated: false
+    }
+  };
+
+  const STORAGE_KEY_USER = 'p6_pds_username';
+  const STORAGE_KEY_PASS = 'p6_pds_password';
+
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const truthy = value => value === true || String(value).toLowerCase() === 'true';
+  function setStatus(text, busy=false) { $('globalStatus').innerHTML = (busy ? '<span class="spinner"></span>' : '') + esc(text); }
+
+  function syncConfigCode(val) {
+    state.configCode = val;
+    if ($('configCodeSelect') && $('configCodeSelect').value !== val) $('configCodeSelect').value = val;
+    if ($('configCodeOpt') && $('configCodeOpt').value !== val) $('configCodeOpt').value = val;
+    if ($('postmanConfigCode')) $('postmanConfigCode').textContent = val;
+    if ($('activeRoleTag')) $('activeRoleTag').textContent = val;
+  }
+
+  function onConfigCodeChanged(newVal) {
+    syncConfigCode(newVal);
+    state.activeTable = null;
+    state.columns = [];
+    state.selectedColumns.clear();
+    state.activeViewDefinition = null;
+    hideViewDefinition();
+    if ($('tableSearch')) $('tableSearch').value = '';
+    $('columnArea').innerHTML = '<div class="empty">Choose a table on the left to load its columns.</div>';
+    $('columnCount').textContent = 'No table selected';
+    loadTables();
+  }
+
+  function loadSavedCredentials() {
+    try {
+      const u = localStorage.getItem(STORAGE_KEY_USER) || sessionStorage.getItem(STORAGE_KEY_USER);
+      const p = localStorage.getItem(STORAGE_KEY_PASS) || sessionStorage.getItem(STORAGE_KEY_PASS);
+      if (u && p) {
+        state.auth.username = u;
+        state.auth.password = p;
+        state.auth.isAuthenticated = true;
+      }
+    } catch {}
+  }
+
+  function saveCredentials(u, p, remember) {
+    state.auth.username = u;
+    state.auth.password = p;
+    state.auth.isAuthenticated = true;
+    try {
+      if (remember) {
+        localStorage.setItem(STORAGE_KEY_USER, u);
+        localStorage.setItem(STORAGE_KEY_PASS, p);
+        sessionStorage.removeItem(STORAGE_KEY_USER);
+        sessionStorage.removeItem(STORAGE_KEY_PASS);
+      } else {
+        sessionStorage.setItem(STORAGE_KEY_USER, u);
+        sessionStorage.setItem(STORAGE_KEY_PASS, p);
+        localStorage.removeItem(STORAGE_KEY_USER);
+        localStorage.removeItem(STORAGE_KEY_PASS);
+      }
+    } catch {}
+    updateUserUI();
+  }
+
+  function clearCredentials() {
+    state.auth.username = '';
+    state.auth.password = '';
+    state.auth.isAuthenticated = false;
+    try {
+      localStorage.removeItem(STORAGE_KEY_USER);
+      localStorage.removeItem(STORAGE_KEY_PASS);
+      sessionStorage.removeItem(STORAGE_KEY_USER);
+      sessionStorage.removeItem(STORAGE_KEY_PASS);
+    } catch {}
+    updateUserUI();
+  }
+
+  function updateUserUI() {
+    const dot = $('authDot');
+    const text = $('userStatusText');
+    const openBtn = $('openLoginBtn');
+    const logoutBtn = $('logoutBtn');
+    const cancelModal = $('cancelModalBtn');
+    const closeModal = $('closeModalBtn');
+
+    if (state.auth.isAuthenticated && state.auth.username) {
+      dot.className = 'status-dot online';
+      text.textContent = '👤 ' + state.auth.username;
+      openBtn.textContent = 'Switch User';
+      logoutBtn.style.display = 'inline-block';
+      cancelModal.style.display = 'inline-block';
+      closeModal.style.display = 'block';
+    } else {
+      dot.className = 'status-dot';
+      text.textContent = '🔒 Not Connected';
+      openBtn.textContent = 'Sign In';
+      logoutBtn.style.display = 'none';
+      cancelModal.style.display = 'none';
+      closeModal.style.display = 'none';
+    }
+  }
+
+  function showLoginModal(notice = '', prefillUser = '') {
+    const modal = $('loginModal');
+    const noticeEl = $('modalNotice');
+    const errorEl = $('modalError');
+    if (notice) {
+      noticeEl.textContent = notice;
+      noticeEl.style.display = 'block';
+    } else {
+      noticeEl.style.display = 'none';
+    }
+    errorEl.style.display = 'none';
+    $('modalUsername').value = prefillUser || state.auth.username || '';
+    $('modalPassword').value = '';
+    updateUserUI();
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      if ($('modalUsername').value) {
+        $('modalPassword').focus();
+      } else {
+        $('modalUsername').focus();
+      }
+    }, 100);
+  }
+
+  function hideLoginModal() {
+    $('loginModal').style.display = 'none';
+    $('modalError').style.display = 'none';
+  }
+
+  function getAuthHeaders() {
+    const headers = { 'Accept': 'application/json', 'Cache-Control': 'no-cache' };
+    if (state.auth.username && state.auth.password) {
+      headers['X-PDS-Username'] = state.auth.username;
+      headers['X-PDS-Password'] = state.auth.password;
+    }
+    return headers;
+  }
+
+  async function api(url, options = {}) {
+    const headers = { ...getAuthHeaders(), ...(options.headers || {}) };
+    const response = await fetch(url, { ...options, headers });
+    let payload;
+    try { payload = await response.json(); } catch { payload = {error: await response.text()}; }
+    if (response.status === 401) {
+      showLoginModal('Authentication required. Please enter your PDS username and password.');
+      throw new Error(payload.error || 'Authentication required');
+    }
+    if (!response.ok) throw new Error(payload.error || `Service returned HTTP ${response.status}`);
+    return payload;
+  }
+
+  async function loadTables() {
+    setStatus('Loading tables for ' + state.configCode + '…', true);
+    $('tableList').innerHTML = '<div class="empty"><span class="spinner"></span> Loading tables for ' + esc(state.configCode) + '…</div>';
+    try {
+      const payload = await api('/api/tables?configCode=' + encodeURIComponent(state.configCode) + '&_t=' + Date.now());
+      state.tables = payload.tables || [];
+      $('tableCount').textContent = `${state.tables.length} tables`;
+      if (payload.configCode) syncConfigCode(payload.configCode);
+      renderTables();
+      setStatus(`Ready · ${state.tables.length} tables available (${state.configCode})`);
+      try {
+        const cache = await api('/api/cache-status?_t=' + Date.now());
+        setStatus(`Ready · ${state.tables.length} tables (${state.configCode}) · ${cache.cachedTables} column sets cached locally`);
+      } catch {}
+    } catch (error) {
+      $('tableList').innerHTML = `<div class="empty">Could not load tables.</div><div class="error">${esc(error.message)}</div>`;
+      setStatus('Could not connect to PDS');
+    }
+  }
+
+  function renderTables() {
+    const needle = $('tableSearch').value.trim().toUpperCase();
+    const matching = state.tables.filter(t => String(t.tableName).toUpperCase().includes(needle) || String(t.displayName || '').toUpperCase().includes(needle));
+    if (!matching.length) { $('tableList').innerHTML = '<div class="empty">No tables match your search.</div>'; return; }
+    
+    // SQL badge is STRICTLY for reporting user only (ds_p6reportuser)
+    const isReportUser = (state.configCode === 'ds_p6reportuser');
+
+    $('tableList').innerHTML = matching.map(t => {
+      const name = t.tableName;
+      const black = truthy(t.isBlackListed);
+      const active = state.activeTable && state.activeTable.toUpperCase() === name.toUpperCase();
+      const chosen = state.chosenTables.has(name.toUpperCase());
+      const hasDef = isReportUser && truthy(t.hasDefinition);
+      return `<div class="table-row ${active ? 'active' : ''}" data-table="${esc(name)}" role="button" tabindex="0" aria-disabled="${black}">
+        <div><div class="table-name">${esc(name)}</div><div class="table-meta"><span class="kind">${esc(t.tableType || 'UNKNOWN')}</span>${hasDef ? '<span class="kind" style="color:#0284c7;background:#f0f9ff;border-color:#bae6fd;font-weight:700">SQL</span>' : ''}${chosen ? '<span class="pill">Added</span>' : ''}${black ? '<span class="blacklist">BLACKLISTED</span>' : ''}</div></div>
+        <span class="count">${black ? 'Blocked' : '›'}</span></div>`;
+    }).join('');
+    $('tableList').querySelectorAll('.table-row').forEach(row => {
+      const activate = () => selectTable(row.dataset.table);
+      row.addEventListener('click', activate);
+      row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }});
+    });
+  }
+
+  function hideViewDefinition() {
+    if ($('viewDefBlock')) $('viewDefBlock').style.display = 'none';
+  }
+
+  function renderViewDefinition(name, sql) {
+    const block = $('viewDefBlock');
+    if (!block) return;
+    // STRICTLY restricted to ds_p6reportuser only. Never show in ds_p6adminuser.
+    if (state.configCode !== 'ds_p6reportuser') {
+      block.style.display = 'none';
+      return;
+    }
+
+    block.style.display = 'block';
+    if (sql) {
+      $('viewDefCode').textContent = sql;
+      $('viewDefPill').textContent = 'PXRPTUSER VIEW';
+      $('viewDefPill').style.background = '#e0f2fe';
+      $('viewDefPill').style.color = '#0369a1';
+      const lineCount = sql.split('\n').length;
+      const charCount = sql.length;
+      $('viewDefStats').textContent = `${charCount.toLocaleString()} chars · ${lineCount} lines`;
+      $('copyViewDefBtn').disabled = false;
+      $('toggleViewDefBtn').disabled = false;
+      $('viewDefWrap').style.display = 'block';
+    } else {
+      $('viewDefCode').innerHTML = '<span style="color:#78909c; font-style:italic;">No custom SQL view definition found for ' + esc(name) + ' in p6_reporting_view_definitions.json.</span>';
+      $('viewDefPill').textContent = 'NO DEFINITION';
+      $('viewDefPill').style.background = '#f3f4f6';
+      $('viewDefPill').style.color = '#6b7280';
+      $('viewDefStats').textContent = '';
+      $('copyViewDefBtn').disabled = true;
+      $('toggleViewDefBtn').disabled = true;
+      $('viewDefWrap').style.display = 'block';
+    }
+  }
+
+  async function selectTable(name) {
+    const meta = state.tables.find(t => String(t.tableName).toUpperCase() === String(name).toUpperCase());
+    if (meta && truthy(meta.isBlackListed)) return;
+    state.activeTable = name;
+    state.selectedColumns = new Set((state.chosenTables.get(name.toUpperCase()) || {}).columns || []);
+    state.activeViewDefinition = null;
+    renderTables();
+    $('columnArea').innerHTML = '<div class="empty"><span class="spinner"></span> Loading columns for ' + esc(name) + '…</div>';
+    $('columnCount').textContent = 'Loading…';
+    hideViewDefinition();
+    try {
+      const payload = await api('/api/columns?table=' + encodeURIComponent(name) + '&configCode=' + encodeURIComponent(state.configCode) + '&_t=' + Date.now());
+      state.columns = payload.columns || [];
+      state.activeViewDefinition = (state.configCode === 'ds_p6reportuser') ? (payload.viewDefinition || null) : null;
+      if (state.activeTable !== name) return;
+      if (payload.columns && payload.columns.length > 0) {
+        renderColumns();
+      } else if (payload.error) {
+        $('columnArea').innerHTML = `<div class="error">Could not load columns for ${esc(name)}.\n${esc(payload.error)}</div>`;
+        $('columnCount').textContent = '0 columns';
+      } else {
+        renderColumns();
+      }
+      
+      // SQL definitions are strictly for ds_p6reportuser
+      if (state.configCode === 'ds_p6reportuser') {
+        renderViewDefinition(name, payload.viewDefinition);
+      } else {
+        hideViewDefinition();
+      }
+    } catch (error) {
+      $('columnArea').innerHTML = `<div class="error">Could not load columns for ${esc(name)}.\n${esc(error.message)}</div>`;
+      $('columnCount').textContent = 'Error';
+      hideViewDefinition();
+    }
+  }
+
+  function renderColumns() {
+    const cols = state.columns;
+    $('columnCount').textContent = `${cols.length} columns`;
+    if (!cols.length) { $('columnArea').innerHTML = '<div class="empty">No columns returned for this table.</div>'; return; }
+    $('columnArea').innerHTML = `
+      <div class="column-top"><div class="search-wrap"><input id="columnSearch" type="search" placeholder="Search columns…"></div><span class="pill" id="checkedCount">${state.selectedColumns.size} checked</span></div>
+      <div class="select-actions"><button id="selectAllVisible">Select visible</button><button id="deselectVisible">Deselect visible</button><button class="primary" id="addTable">Add table to body</button></div>
+      <div class="column-labels"><span></span><span>Column / display name</span><span>Type / keys</span></div>
+      <div class="column-list" id="columnsList"></div>`;
+    renderColumnRows();
+    $('columnSearch').addEventListener('input', renderColumnRows);
+    $('selectAllVisible').addEventListener('click', () => {
+      visibleColumns().forEach(c => state.selectedColumns.add(c.columnName)); renderColumnRows();
+    });
+    $('deselectVisible').addEventListener('click', () => {
+      visibleColumns().forEach(c => state.selectedColumns.delete(c.columnName)); renderColumnRows();
+    });
+    $('addTable').addEventListener('click', addCurrentTable);
+  }
+
+  function visibleColumns() {
+    const needle = ($('columnSearch')?.value || '').trim().toUpperCase();
+    return state.columns.filter(c => String(c.columnName).toUpperCase().includes(needle) || String(c.displayName || '').toUpperCase().includes(needle));
+  }
+
+  function renderColumnRows() {
+    const visible = visibleColumns();
+    $('columnsList').innerHTML = visible.map(c => {
+      const name = c.columnName;
+      const checked = state.selectedColumns.has(name);
+      const details = [c.dataType || c.physicalDataType, truthy(c.isPK) ? 'PK' : '', truthy(c.isFK) ? `FK${c.fkTableName ? ' → ' + c.fkTableName : ''}` : ''].filter(Boolean).join(' · ');
+      return `<label class="column-row"><input type="checkbox" data-col="${esc(name)}" ${checked ? 'checked' : ''}><span><span class="col-name">${esc(name)}</span>${c.displayName && c.displayName !== name ? `<br><span class="col-info">${esc(c.displayName)}</span>` : ''}</span><span class="col-info">${esc(details)}</span></label>`;
+    }).join('') || '<div class="empty">No columns match your search.</div>';
+    $('columnsList').querySelectorAll('input[type=checkbox]').forEach(box => box.addEventListener('change', () => {
+      if (box.checked) state.selectedColumns.add(box.dataset.col); else state.selectedColumns.delete(box.dataset.col);
+      $('checkedCount').textContent = `${state.selectedColumns.size} checked`;
+    }));
+    $('checkedCount').textContent = `${state.selectedColumns.size} checked`;
+  }
+
+  function addCurrentTable() {
+    if (!state.activeTable) return;
+    const columns = state.columns.filter(c => state.selectedColumns.has(c.columnName)).map(c => c.columnName);
+    if (!columns.length) { showOutputError('Select at least one column before adding this table.'); return; }
+    state.chosenTables.set(state.activeTable.toUpperCase(), { tableName: state.activeTable, columns });
+    showOutputError(''); renderTables(); renderChosen(); generateBody();
+  }
+
+  function renderChosen() {
+    const chosen = Array.from(state.chosenTables.values());
+    $('selectedCount').textContent = `${chosen.length} table${chosen.length === 1 ? '' : 's'} selected`;
+    if (!chosen.length) { $('chosenList').innerHTML = '<div class="empty">No tables added yet. Select a table\'s columns and click “Add table to body”.</div>'; return; }
+    $('chosenList').innerHTML = chosen.map(entry => `<div class="chosen-card"><div class="chosen-card-head"><strong>${esc(entry.tableName)}</strong><button data-remove="${esc(entry.tableName)}">Remove</button></div><p>${entry.columns.length} column${entry.columns.length === 1 ? '' : 's'} · ${entry.columns.map(esc).join(', ')}</p></div>`).join('');
+    $('chosenList').querySelectorAll('button[data-remove]').forEach(btn => btn.addEventListener('click', () => {
+      state.chosenTables.delete(btn.dataset.remove.toUpperCase()); renderChosen(); renderTables(); generateBody();
+    }));
+  }
+
+  function makeBody() {
+    const tables = Array.from(state.chosenTables.values()).map(t => ({ tableName: t.tableName, columns: t.columns }));
+    const body = { tables };
+    const name = $('queryName').value.trim(); if (name) body.name = name;
+    const pageSize = $('pageSize').value.trim();
+    if (pageSize) {
+      if (!/^\d+$/.test(pageSize) || Number(pageSize) < 1) throw new Error('Page size must be a positive integer.');
+      body.pageSize = pageSize;
+    }
+    body.mode = $('mode').value;
+    const sinceDate = $('sinceDate').value.trim(); if (sinceDate) body.sinceDate = sinceDate;
+    return body;
+  }
+
+  function generateBody() {
+    try {
+      state.generated = makeBody();
+      $('output').textContent = JSON.stringify(state.generated, null, 2);
+      $('copyBtn').disabled = false; $('downloadBtn').disabled = false;
+      showOutputError('');
+    } catch (error) { showOutputError(error.message); }
+  }
+
+  function showOutputError(message) { $('outputError').innerHTML = message ? `<div class="error">${esc(message)}</div>` : ''; }
+
+  // Search & Form controls
+  $('tableSearch').addEventListener('input', renderTables);
+  $('refreshTables').addEventListener('click', loadTables);
+  $('generateBtn').addEventListener('click', generateBody);
+  ['queryName','pageSize','mode','sinceDate'].forEach(id => $(id).addEventListener('input', generateBody));
+  if ($('configCodeSelect')) $('configCodeSelect').addEventListener('change', e => onConfigCodeChanged(e.target.value));
+  if ($('configCodeOpt')) $('configCodeOpt').addEventListener('change', e => onConfigCodeChanged(e.target.value));
+
+  // SQL definition controls (Reporting schema only)
+  if ($('copyViewDefBtn')) $('copyViewDefBtn').addEventListener('click', async () => {
+    if (!state.activeViewDefinition) return;
+    try {
+      await navigator.clipboard.writeText(state.activeViewDefinition);
+      $('copyViewDefBtn').textContent = 'Copied!';
+      setTimeout(() => $('copyViewDefBtn').textContent = 'Copy SQL', 1200);
+    } catch {
+      alert('Clipboard access blocked. Please select and copy the SQL manually.');
+    }
+  });
+
+  if ($('toggleViewDefBtn')) $('toggleViewDefBtn').addEventListener('click', () => {
+    state.isViewDefExpanded = !state.isViewDefExpanded;
+    const codePre = $('viewDefCode');
+    if (state.isViewDefExpanded) {
+      codePre.style.maxHeight = '70vh';
+      $('toggleViewDefBtn').textContent = 'Collapse';
+    } else {
+      codePre.style.maxHeight = '260px';
+      $('toggleViewDefBtn').textContent = 'Expand';
+    }
+  });
+
+  // Action buttons
+  $('copyBtn').addEventListener('click', async () => {
+    generateBody();
+    try { await navigator.clipboard.writeText(JSON.stringify(state.generated, null, 2)); $('copyBtn').textContent = 'Copied!'; setTimeout(() => $('copyBtn').textContent = 'Copy JSON', 1200); }
+    catch { showOutputError('Clipboard access was blocked. Select and copy the JSON from the output panel.'); }
+  });
+
+  $('downloadBtn').addEventListener('click', () => {
+    generateBody(); const blob = new Blob([JSON.stringify(state.generated, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'p6_runquery_body.json'; a.click(); URL.revokeObjectURL(url);
+  });
+
+  $('clearBtn').addEventListener('click', () => { state.chosenTables.clear(); renderChosen(); renderTables(); generateBody(); showOutputError(''); });
+
+  // Authentication UI Handlers
+  $('openLoginBtn').addEventListener('click', () => showLoginModal('', state.auth.username));
+  $('logoutBtn').addEventListener('click', () => {
+    clearCredentials();
+    showLoginModal('Signed out. Please enter credentials to connect.');
+  });
+  $('cancelModalBtn').addEventListener('click', hideLoginModal);
+  $('closeModalBtn').addEventListener('click', hideLoginModal);
+
+  $('togglePasswordBtn').addEventListener('click', () => {
+    const input = $('modalPassword');
+    if (input.type === 'password') {
+      input.type = 'text';
+      $('togglePasswordBtn').textContent = '🙈';
+    } else {
+      input.type = 'password';
+      $('togglePasswordBtn').textContent = '👁️';
+    }
+  });
+
+  $('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = $('modalUsername').value.trim();
+    const password = $('modalPassword').value.trim();
+    const remember = $('rememberCreds').checked;
+    const errorEl = $('modalError');
+    const spinner = $('loginBtnSpinner');
+    const submitBtn = $('submitLoginBtn');
+
+    if (!username || !password) {
+      errorEl.textContent = 'Please enter both username and password.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    errorEl.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      let result;
+      try { result = await res.json(); } catch { result = { error: await res.text() }; }
+
+      if (!res.ok || !result.ok) {
+        throw new Error(result.error || 'Failed to authenticate with PDS');
+      }
+
+      saveCredentials(username, password, remember);
+      hideLoginModal();
+      setStatus(`Connected as ${username}`);
+      loadTables();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+    } finally {
+      spinner.style.display = 'none';
+      submitBtn.disabled = false;
+    }
+  });
+
+  // App initialization
+  async function init() {
+    loadSavedCredentials();
+    updateUserUI();
+
+    try {
+      const auth = await api('/api/auth-status?_t=' + Date.now());
+      if (auth.authenticated && auth.username) {
+        if (!state.auth.username) {
+          state.auth.username = auth.username;
+          state.auth.isAuthenticated = true;
+          updateUserUI();
+        }
+      } else if (!state.auth.username) {
+        showLoginModal('Sign in with your PDS credentials to begin.');
+        return;
+      }
+    } catch {
+      if (!state.auth.username) {
+        showLoginModal('Sign in with your PDS credentials to begin.');
+        return;
+      }
+    }
+
+    loadTables();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
