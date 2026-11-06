@@ -77,7 +77,9 @@ ALLOWED_CONFIG_CODES = ["ds_p6adminuser", "ds_p6reportuser"]
 HOST = os.getenv("HOST") or "0.0.0.0"
 PORT = int(os.getenv("PORT") or "8765")
 REQUEST_TIMEOUT_SECONDS = int(os.getenv("REQUEST_TIMEOUT_SECONDS") or "45")
-AUTO_OPEN_BROWSER = is_truthy(os.getenv("AUTO_OPEN_BROWSER", "false"))
+# Cloud environments (Render, Fly, etc.) inject RENDER or PORT; suppress local GUI browser launch in the cloud
+IS_CLOUD_HOSTED = bool(os.getenv("RENDER") or (os.getenv("PORT") and os.getenv("PORT") != "8765"))
+AUTO_OPEN_BROWSER = False if IS_CLOUD_HOSTED else is_truthy(os.getenv("AUTO_OPEN_BROWSER", "false"))
 
 CACHE_FILE = Path(__file__).with_name("pds_metadata_cache.json")
 HTML_FILE = Path(__file__).with_name("pds_table_selector.html")
@@ -417,6 +419,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path in ("/health", "/api/health"):
+            self.send_json({"status": "ok", "app": "primavera_p6"})
+            return
+
         if parsed.path in ("/", "/index.html"):
             if not HTML_FILE.exists():
                 self.send_error(500, f"HTML file missing: {HTML_FILE.name}")

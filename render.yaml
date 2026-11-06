@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: primavera-p6
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python pds_table_selector.py
+    plan: free
+    envVars:
+      - key: AUTO_OPEN_BROWSER
+        value: "false"
